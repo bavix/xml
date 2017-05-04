@@ -1,0 +1,21 @@
+{
+  "name": "bavix/xml",
+  "description": "XML Reader",
+  "minimum-stability": "stable",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Babichev Maxim",
+      "email": "info@babichev.net"
+    }
+  ],
+  "require": {
+    "bavix/foundation": "^1.0",
+    "bavix/exceptions": "^1.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Bavix\\": "src/"
+    }
+  }
+}
