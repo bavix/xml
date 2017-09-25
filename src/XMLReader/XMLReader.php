@@ -49,7 +49,7 @@ class XMLReader
         return $this->document()->createElement($name);
     }
 
-    protected function _asArray(\SimpleXMLElement $element)
+    protected function _asData(\SimpleXMLElement $element)
     {
         $output = [];
 
@@ -65,6 +65,28 @@ class XMLReader
             }
         }
 
+        if (!$element->count())
+        {
+            $output['@value'] = (string)$element;
+
+            if (!isset($output['@attributes']))
+            {
+                $output = $output['@value'];
+            }
+        }
+
+        return $output;
+    }
+
+    protected function _asArray(\SimpleXMLElement $element)
+    {
+        $output = $this->_asData($element);
+
+        if (!$element->count())
+        {
+            return $output;
+        }
+
         /**
          * @var \SimpleXMLElement $item
          */
@@ -72,7 +94,7 @@ class XMLReader
         {
             if (!$item->count())
             {
-                 $output[$key] = (string)$item;
+                 $output[$key] = $this->_asArray($item);
                  continue;
             }
 

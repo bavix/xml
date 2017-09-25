@@ -7,7 +7,12 @@ return [
             'age'  => 34
         ],
         [
-            'name' => 'Ivan'
+            'name' => [
+                '@attributes' => [
+                    'age' => 44
+                ],
+                '@value' => 'Ivan'
+            ]
         ],
         [
             '@attributes' => [
