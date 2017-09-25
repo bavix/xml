@@ -49,6 +49,13 @@ class XMLReader
         return $this->document()->createElement($name);
     }
 
+    /**
+     * @param \SimpleXMLElement $element
+     *
+     * @return array|string
+     *
+     * @codeCoverageIgnore
+     */
     protected function _asData(\SimpleXMLElement $element)
     {
         $output = [];
@@ -78,6 +85,13 @@ class XMLReader
         return $output;
     }
 
+    /**
+     * @param \SimpleXMLElement $element
+     *
+     * @return array|string
+     *
+     * @codeCoverageIgnore
+     */
     protected function _asArray(\SimpleXMLElement $element)
     {
         $output = $this->_asData($element);

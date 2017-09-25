@@ -29,7 +29,7 @@ class XMLReaderTest extends Unit
     public function testArray()
     {
         $xml = $this->xml->asXML($this->storage);
-        
+
         $this->assertArraySubset(
             $this->storage['person'],
             $this->xml->asArray($xml)['person']
