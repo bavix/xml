@@ -4,6 +4,9 @@ namespace Bavix\XMLReader;
 
 use Bavix\Exceptions;
 use Bavix\Foundation\SharedInstance;
+use Bavix\Helpers\Arr;
+use Bavix\Helpers\File;
+use Bavix\Helpers\JSON;
 use DOMElement;
 
 class XMLReader
@@ -46,16 +49,69 @@ class XMLReader
         return $this->document()->createElement($name);
     }
 
+    protected function _asArray(\SimpleXMLElement $element)
+    {
+        $output = [];
+
+        $attributes = $element->attributes();
+
+        if ($attributes)
+        {
+            $output['@attributes'] = $this->_asArray($attributes);
+
+            if (empty($output['@attributes']))
+            {
+                Arr::remove($output, '@attributes');
+            }
+        }
+
+        /**
+         * @var \SimpleXMLElement $item
+         */
+        foreach ($element as $key => $item)
+        {
+            if (!$item->count())
+            {
+                 $output[$key] = (string)$item;
+                 continue;
+            }
+
+            Arr::initOrPush(
+                $output,
+                $key,
+                $this->_asArray($item)
+            );
+        }
+
+        return $output;
+    }
+
     /**
-     * @param string $file
+     * @param string|\DOMNode $mixed
      *
      * @return array
      */
-    public function asArray($file)
+    public function asArray($mixed)
     {
-        $reader = \simplexml_load_file($file);
+        if ($mixed instanceof \DOMNode)
+        {
+            return $this->_asArray(\simplexml_import_dom($mixed));
+        }
 
-        return json_decode(json_encode((array)$reader), true);
+        if (File::isFile($mixed))
+        {
+            return $this->_asArray(\simplexml_load_file($mixed));
+        }
+
+        return $this->_asArray(\simplexml_load_string($mixed));
+    }
+
+    /**
+     * @return \DOMDocument
+     */
+    public function asObject()
+    {
+        return clone $this->document();
     }
 
     /**
@@ -92,13 +148,13 @@ class XMLReader
             return;
         }
 
-        if (count($storage) === 0)
+        if (empty($storage))
         {
             throw new Exceptions\Blank('Array is empty');
         }
 
-        $isInt      = array_map('is_int', array_keys($storage));
-        $sequential = !in_array(false, $isInt, true);
+        $isInt      = Arr::map(Arr::getKeys($storage), 'is_int');
+        $sequential = !Arr::in($isInt, false, true);
 
         foreach ($storage as $key => $data)
         {
@@ -123,7 +179,7 @@ class XMLReader
         {
             $this->addAttributes($element, $storage);
         }
-        elseif ($key === '@value' && is_string($storage))
+        else if ($key === '@value' && is_string($storage))
         {
             $element->nodeValue = htmlspecialchars($storage);
         }
@@ -142,12 +198,11 @@ class XMLReader
         if (is_array($storage))
         {
             $this->addCollectionNode($element, $storage);
-        }
-        else
-        {
 
-            $this->addSequentialNode($element, $storage);
+            return;
         }
+
+        $this->addSequentialNode($element, $storage);
     }
 
     /**
