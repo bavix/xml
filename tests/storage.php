@@ -4,21 +4,40 @@ return [
     'person' => [
         [
             'name' => 'Alex',
-            'age'  => 34
+            'age'  => 34,
+            'cars' => [
+                [
+                    '@attributes' => [
+                        'drive' => 'test'
+                    ],
+                    '@value' => 'Volvo'
+                ],
+
+                'BMW',
+                'Toyota',
+                'Honda',
+                'Mercedes',
+                'Opel'
+            ]
         ],
         [
             'name' => [
                 '@attributes' => [
                     'age' => 44
                 ],
-                '@value' => 'Ivan'
-            ]
+                '@value'      => 'Ivan'
+            ],
+            'cars' => 'Opel'
         ],
         [
             '@attributes' => [
                 'name' => 'Anton'
             ],
-            'age' => 22
+            'age'         => 22,
+            'cars' => [
+                'Volvo',
+                'BMW'
+            ]
         ]
     ]
 ];
