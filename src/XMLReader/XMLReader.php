@@ -122,6 +122,19 @@ class XMLReader
             return $output;
         }
 
+        return $this->_pushArray($output, $element);
+    }
+
+    /**
+     * @param array             $output
+     * @param \SimpleXMLElement $element
+     *
+     * @return array
+     *
+     * @codeCoverageIgnore
+     */
+    protected function _pushArray(array &$output, \SimpleXMLElement $element)
+    {
         $first = [];
 
         /**
