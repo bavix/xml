@@ -2,8 +2,10 @@
 
 namespace Bavix\XMLReader;
 
-use Bavix\Exceptions;
 use Bavix\Foundation\SharedInstance;
+use Bavix\Helpers\File;
+use Bavix\Helpers\Arr;
+use Bavix\Exceptions;
 use DOMElement;
 
 class XMLReader
@@ -14,7 +16,9 @@ class XMLReader
     /**
      * @var array
      */
-    protected $copyright = ['created-with' => 'https://github.com/bavix/xml'];
+    protected $copyright = [
+        'created-with' => 'https://github.com/bavix/xml'
+    ];
 
     /**
      * @var \DOMDocument
@@ -30,7 +34,7 @@ class XMLReader
         {
             $this->document                = new \DOMDocument('1.0', 'utf-8');
             $this->document->formatOutput  = true;
-            $this->copyright['created-at'] = date('Y-m-d H:i:s');
+            $this->copyright['created-at'] = \date('Y-m-d H:i:s');
         }
 
         return $this->document;
@@ -47,29 +51,173 @@ class XMLReader
     }
 
     /**
-     * @param string $file
+     * @param \SimpleXMLElement $element
+     * @param string            $property
      *
      * @return array
      */
-    public function asArray($file)
+    protected function _property(\SimpleXMLElement $element, $property)
     {
-        $reader = \simplexml_load_file($file);
+        $output = [];
 
-        return json_decode(json_encode((array)$reader), true);
+        if (method_exists($element, $property))
+        {
+
+            $properties = $element->$property();
+
+            if ($properties)
+            {
+                $output['@' . $property] = is_array($properties) ?
+                    $properties :
+                    $this->_asArray($properties);
+
+                if (empty($output['@' . $property]))
+                {
+                    Arr::remove($output, '@' . $property);
+                }
+            }
+
+        }
+
+        return $output;
     }
 
     /**
-     * @param array $storage
+     * @param \SimpleXMLElement $element
+     *
+     * @return array|string
+     *
+     * @codeCoverageIgnore
+     */
+    protected function _asData(\SimpleXMLElement $element)
+    {
+        $output = $this->_property($element, 'attributes');
+
+        if (!$element->count())
+        {
+            $output['@value'] = (string)$element;
+
+            if (!isset($output['@attributes']))
+            {
+                $output = $output['@value'];
+            }
+        }
+
+        return $output;
+    }
+
+    /**
+     * @param \SimpleXMLElement $element
+     *
+     * @return array|string
+     *
+     * @codeCoverageIgnore
+     */
+    protected function _asArray(\SimpleXMLElement $element)
+    {
+        $output = $this->_asData($element);
+
+        if (!$element->count())
+        {
+            return $output;
+        }
+
+        $first = [];
+
+        /**
+         * @var \SimpleXMLElement $item
+         */
+        foreach ($element as $key => $item)
+        {
+            if (!isset($output[$key]))
+            {
+                $first[$key]  = true;
+                $output[$key] = $this->_asArray($item);
+                continue;
+            }
+
+            if (!empty($first[$key]))
+            {
+                $output[$key] = [$output[$key]];
+            }
+
+            $output[$key][] = $this->_asArray($item);
+            $first[$key]    = false;
+        }
+
+        return $output;
+    }
+
+    /**
+     * @param string|\DOMNode $mixed
+     *
+     * @return \SimpleXMLElement
+     */
+    protected function _simpleXml($mixed)
+    {
+        if ($mixed instanceof \DOMNode)
+        {
+            return \simplexml_import_dom($mixed);
+        }
+
+        if (File::isFile($mixed))
+        {
+            return \simplexml_load_file($mixed);
+        }
+
+        return \simplexml_load_string($mixed);
+    }
+
+    /**
+     * @param string|\DOMNode $mixed
+     *
+     * @return array
+     */
+    public function asArray($mixed)
+    {
+        $data = $this->_simpleXml($mixed);
+
+        return $data ?
+            $this->_asArray($data) :
+            null;
+    }
+
+    /**
+     * @return \DOMDocument
+     */
+    public function asObject()
+    {
+        return clone $this->document();
+    }
+
+    /**
+     * @param array|\Traversable $storage
+     *
+     * @return array
+     */
+    protected function _convertStorage($storage)
+    {
+        if ($storage instanceof \Traversable)
+        {
+            return \iterator_to_array($storage);
+        }
+
+        return $storage;
+    }
+
+    /**
+     * @param array|\Traversable $storage
+     * @param string             $name
      *
      * @return string
      */
-    public function asXML(array $storage)
+    public function asXML($storage, $name = 'bavix')
     {
-        $element = $this->element('bavix');
+        $element = $this->element($name);
 
         $this->addAttributes($element, $this->copyright);
         $this->document()->appendChild($element);
-        $this->convert($element, $storage);
+        $this->convert($element, $this->_convertStorage($storage));
         $xml = $this->document()->saveXML();
 
         $this->document = null;
@@ -92,13 +240,13 @@ class XMLReader
             return;
         }
 
-        if (count($storage) === 0)
+        if (empty($storage))
         {
             throw new Exceptions\Blank('Array is empty');
         }
 
-        $isInt      = array_map('is_int', array_keys($storage));
-        $sequential = !in_array(false, $isInt, true);
+        $isInt      = Arr::map(Arr::getKeys($storage), '\is_int');
+        $sequential = !Arr::in($isInt, false);
 
         foreach ($storage as $key => $data)
         {
@@ -123,9 +271,9 @@ class XMLReader
         {
             $this->addAttributes($element, $storage);
         }
-        elseif ($key === '@value' && is_string($storage))
+        else if ($key === '@value' && \is_string($storage))
         {
-            $element->nodeValue = htmlspecialchars($storage);
+            $element->nodeValue = \htmlspecialchars($storage);
         }
         else
         {
@@ -142,12 +290,11 @@ class XMLReader
         if (is_array($storage))
         {
             $this->addCollectionNode($element, $storage);
-        }
-        else
-        {
 
-            $this->addSequentialNode($element, $storage);
+            return;
         }
+
+        $this->addSequentialNode($element, $storage);
     }
 
     /**
@@ -159,7 +306,7 @@ class XMLReader
      */
     protected function addNode(DOMElement $element, $key, $value)
     {
-        $key   = str_replace(' ', '_', $key);
+        $key   = \str_replace(' ', '-', $key);
         $child = $this->document()->createElement($key);
         $element->appendChild($child);
         $this->convert($child, $value);
@@ -183,7 +330,8 @@ class XMLReader
         /**
          * @var $child DOMElement
          */
-        $child = $element->cloneNode();
+        $child = $this->document()->createElement($element->nodeName);
+//        $child = $element->cloneNode();
         $element->parentNode->appendChild($child);
         $this->convert($child, $value);
     }
@@ -196,21 +344,22 @@ class XMLReader
     {
         if (empty($element->nodeValue))
         {
-            $element->nodeValue = htmlspecialchars($value);
+            $element->nodeValue = \htmlspecialchars($value);
 
             return;
         }
 
-        $child            = $element->cloneNode();
-        $child->nodeValue = htmlspecialchars($value);
+        $child = $this->document()->createElement($element->nodeName);
+//        $child = $element->cloneNode();
+        $child->nodeValue = \htmlspecialchars($value);
         $element->parentNode->appendChild($child);
     }
 
     /**
-     * @param DOMElement $element
-     * @param array      $storage
+     * @param DOMElement         $element
+     * @param array|\Traversable $storage
      */
-    protected function addAttributes(DOMElement $element, array $storage)
+    protected function addAttributes(DOMElement $element, $storage)
     {
         foreach ($storage as $attrKey => $attrVal)
         {
