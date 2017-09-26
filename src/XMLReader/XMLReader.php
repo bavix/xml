@@ -68,8 +68,7 @@ class XMLReader
             if ($properties)
             {
                 $output['@' . $property] = is_array($properties) ?
-                    $properties :
-                    $this->_asArray($properties);
+                    $properties : $this->_asArray($properties);
 
                 if (empty($output['@' . $property]))
                 {
@@ -193,8 +192,7 @@ class XMLReader
         $data = $this->_simpleXml($mixed);
 
         return $data ?
-            $this->_asArray($data) :
-            null;
+            $this->_asArray($data) : null;
     }
 
     /**
