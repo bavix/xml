@@ -152,6 +152,8 @@ class XMLReader
      * @param string|\DOMNode $mixed
      *
      * @return \SimpleXMLElement
+     *
+     * @codeCoverageIgnore
      */
     protected function _simpleXml($mixed)
     {
@@ -194,6 +196,8 @@ class XMLReader
      * @param array|\Traversable $storage
      *
      * @return array
+     *
+     * @codeCoverageIgnore
      */
     protected function _convertStorage($storage)
     {
@@ -230,6 +234,8 @@ class XMLReader
      * @param mixed      $storage
      *
      * @throws Exceptions\Blank
+     *
+     * @codeCoverageIgnore
      */
     protected function convert(DOMElement $element, $storage)
     {
@@ -264,6 +270,8 @@ class XMLReader
      * @param string     $key
      * @param DOMElement $element
      * @param mixed      $storage
+     *
+     * @codeCoverageIgnore
      */
     protected function addNodeWithKey($key, DOMElement $element, $storage)
     {
@@ -284,6 +292,8 @@ class XMLReader
     /**
      * @param DOMElement $element
      * @param mixed      $storage
+     *
+     * @codeCoverageIgnore
      */
     protected function sequential(DOMElement $element, $storage)
     {
@@ -303,6 +313,8 @@ class XMLReader
      * @param mixed      $value
      *
      * @throws Exceptions\Blank
+     *
+     * @codeCoverageIgnore
      */
     protected function addNode(DOMElement $element, $key, $value)
     {
@@ -317,6 +329,8 @@ class XMLReader
      * @param mixed      $value
      *
      * @throws Exceptions\Blank
+     *
+     * @codeCoverageIgnore
      */
     protected function addCollectionNode(DOMElement $element, $value)
     {
@@ -339,6 +353,8 @@ class XMLReader
     /**
      * @param DOMElement $element
      * @param mixed      $value
+     *
+     * @codeCoverageIgnore
      */
     protected function addSequentialNode(DOMElement $element, $value)
     {
@@ -358,6 +374,8 @@ class XMLReader
     /**
      * @param DOMElement         $element
      * @param array|\Traversable $storage
+     *
+     * @codeCoverageIgnore
      */
     protected function addAttributes(DOMElement $element, $storage)
     {
