@@ -16,6 +16,9 @@
   "require-dev": {
     "bavix/tests": "^1.0"
   },
+  "suggest": {
+    "ext-xml": "*"
+  },
   "autoload": {
     "psr-4": {
       "Bavix\\": "src/"
