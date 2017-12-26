@@ -13,7 +13,7 @@
 XML Reader - work with xml as files.
 
 * **Vendor**: bavix
-* **Package**: xml
+* **Package**: XML Reader
 * **Version**: [![Latest Stable Version](https://poser.pugx.org/bavix/xml/v/stable)](https://packagist.org/packages/bavix/xml)
 * **PHP Version**: 7.1+ 
 * **[Composer](https://getcomposer.org/):** `composer require bavix/xml`
