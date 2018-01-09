@@ -223,12 +223,17 @@ class XMLReader
     /**
      * @param array|\Traversable $storage
      * @param string             $name
+     * @param array              $attributes
      *
      * @return string
      */
-    public function asXML($storage, $name = 'bavix')
+    public function asXML($storage, $name = 'bavix', array $attributes = [])
     {
         $element = $this->element($name);
+
+        foreach ($attributes as $attr => $value) {
+            $element->setAttribute($attr, $value);
+        }
 
         $this->addAttributes($element, $this->copyright);
         $this->document()->appendChild($element);
