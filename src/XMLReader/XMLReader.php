@@ -291,8 +291,7 @@ class XMLReader
         if ($key === '@attributes')
         {
             $this->addAttributes($element, $storage);
-        }
-        else if ($key === '@value')
+        } else if ($key === '@value')
         {
 
             if (\is_object($storage) && $storage instanceof Raw)
@@ -325,8 +324,7 @@ class XMLReader
             }
 
             $element->appendChild($fragment);
-        }
-        else
+        } else
         {
             $this->addNode($element, $key, $storage);
         }
