@@ -294,9 +294,18 @@ class XMLReader
         }
         else if ($key === '@value')
         {
+
+            if (\is_object($storage) && $storage instanceof CData)
+            {
+                $fragment = $element->ownerDocument->createDocumentFragment();
+                $fragment->appendXML((string)$storage);
+                $element->appendChild($fragment);
+                return;
+            }
+
             if (\is_string($storage))
             {
-                $element->nodeValue = \htmlspecialchars($storage);
+                $element->nodeValue = $storage;
 
                 return;
             }
