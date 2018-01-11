@@ -28,7 +28,7 @@ class XMLReader
     /**
      * @return \DOMDocument
      */
-    protected function document()
+    protected function document(): \DOMDocument
     {
         if (!$this->document)
         {
@@ -45,7 +45,7 @@ class XMLReader
      *
      * @return \DOMElement
      */
-    protected function element($name)
+    protected function element($name): \DOMElement
     {
         return $this->document()->createElement($name);
     }
@@ -56,7 +56,7 @@ class XMLReader
      *
      * @return array
      */
-    protected function _property(\SimpleXMLElement $element, $property)
+    protected function _property(\SimpleXMLElement $element, $property): array
     {
         $output = [];
 
@@ -132,7 +132,7 @@ class XMLReader
      *
      * @codeCoverageIgnore
      */
-    protected function _pushArray(array &$output, \SimpleXMLElement $element)
+    protected function _pushArray(array &$output, \SimpleXMLElement $element): array
     {
         $first = [];
 
@@ -167,7 +167,7 @@ class XMLReader
      *
      * @codeCoverageIgnore
      */
-    protected function _simpleXml($mixed)
+    protected function _simpleXml($mixed): \SimpleXMLElement
     {
         if ($mixed instanceof \DOMNode)
         {
@@ -185,7 +185,7 @@ class XMLReader
     /**
      * @param string|\DOMNode $mixed
      *
-     * @return array
+     * @return array|null
      */
     public function asArray($mixed)
     {
@@ -198,7 +198,7 @@ class XMLReader
     /**
      * @return \DOMDocument
      */
-    public function asObject()
+    public function asObject(): \DOMDocument
     {
         return clone $this->document();
     }
@@ -210,7 +210,7 @@ class XMLReader
      *
      * @codeCoverageIgnore
      */
-    protected function _convertStorage($storage)
+    protected function _convertStorage($storage): array
     {
         if ($storage instanceof \Traversable)
         {
@@ -227,7 +227,7 @@ class XMLReader
      *
      * @return string
      */
-    public function asXML($storage, $name = 'bavix', array $attributes = [])
+    public function asXML($storage, string $name = 'bavix', array $attributes = []): string
     {
         $element = $this->element($name);
 
@@ -252,7 +252,7 @@ class XMLReader
      */
     protected function convert(DOMElement $element, $storage)
     {
-        if (!is_array($storage))
+        if (!\is_array($storage))
         {
             $element->nodeValue = htmlspecialchars($storage);
 
@@ -295,7 +295,7 @@ class XMLReader
         else if ($key === '@value')
         {
 
-            if (\is_object($storage) && $storage instanceof CData)
+            if (\is_object($storage) && $storage instanceof Raw)
             {
                 $fragment = $element->ownerDocument->createDocumentFragment();
                 $fragment->appendXML((string)$storage);
@@ -340,7 +340,7 @@ class XMLReader
      */
     protected function sequential(DOMElement $element, $storage)
     {
-        if (is_array($storage))
+        if (\is_array($storage))
         {
             $this->addCollectionNode($element, $storage);
 
