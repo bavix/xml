@@ -231,10 +231,7 @@ class XMLReader
     {
         $element = $this->element($name);
 
-        foreach ($attributes as $attr => $value) {
-            $element->setAttribute($attr, $value);
-        }
-
+        $this->addAttributes($element, $attributes);
         $this->addAttributes($element, $this->copyright);
         $this->document()->appendChild($element);
         $this->convert($element, $this->_convertStorage($storage));
@@ -295,9 +292,30 @@ class XMLReader
         {
             $this->addAttributes($element, $storage);
         }
-        else if ($key === '@value' && \is_string($storage))
+        else if ($key === '@value')
         {
-            $element->nodeValue = \htmlspecialchars($storage);
+            if (\is_string($storage))
+            {
+                $element->nodeValue = \htmlspecialchars($storage);
+
+                return;
+            }
+
+            $dom = new \DOMDocument();
+            $dom->loadXML(
+                (new XMLReader())->asXML($storage)
+            );
+
+            $fragment = $element->ownerDocument->createDocumentFragment();
+
+            foreach ($dom->firstChild->childNodes as $value)
+            {
+                $fragment->appendXML(
+                    $value->ownerDocument->saveXML($value)
+                );
+            }
+
+            $element->appendChild($fragment);
         }
         else
         {
