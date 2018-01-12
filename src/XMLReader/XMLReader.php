@@ -16,14 +16,28 @@ class XMLReader
     /**
      * @var array
      */
-    protected $copyright = [
-        'created-with' => 'https://github.com/bavix/xml'
-    ];
+    protected $copyright = [];
+
+    /**
+     * @var array
+     */
+    protected $namespaces = [];
 
     /**
      * @var \DOMDocument
      */
     protected $document;
+
+    public function __construct($copyright = true)
+    {
+        if ($copyright)
+        {
+            $this->copyright = [
+                'created-with' => 'https://github.com/bavix/xml',
+                'created-at'   => \date('Y-m-d H:i:s')
+            ];
+        }
+    }
 
     /**
      * @return \DOMDocument
@@ -32,9 +46,8 @@ class XMLReader
     {
         if (!$this->document)
         {
-            $this->document                = new \DOMDocument('1.0', 'utf-8');
-            $this->document->formatOutput  = true;
-            $this->copyright['created-at'] = \date('Y-m-d H:i:s');
+            $this->document               = new \DOMDocument('1.0', 'utf-8');
+            $this->document->formatOutput = true;
         }
 
         return $this->document;
@@ -47,6 +60,17 @@ class XMLReader
      */
     protected function element($name): \DOMElement
     {
+        if (strpos($name, ':') !== false)
+        {
+
+            $keys = explode(':', $name);
+
+            return $this->document()->createElementNS(
+                $this->namespaces['xmlns:' . \current($keys)],
+                $name
+            );
+        }
+
         return $this->document()->createElement($name);
     }
 
@@ -229,6 +253,7 @@ class XMLReader
      */
     public function asXML($storage, string $name = 'bavix', array $attributes = []): string
     {
+        $storage = $this->fragments($storage);
         $element = $this->element($name);
 
         $this->addAttributes($element, $attributes);
@@ -252,6 +277,15 @@ class XMLReader
      */
     protected function convert(DOMElement $element, $storage)
     {
+        if (\is_object($storage))
+        {
+            $element->appendChild(
+                $element->ownerDocument->importNode($storage)
+            );
+
+            return;
+        }
+
         if (!\is_array($storage))
         {
             $element->nodeValue = htmlspecialchars($storage);
@@ -279,6 +313,35 @@ class XMLReader
         }
     }
 
+    protected function fragments(array $storage)
+    {
+
+        Arr::walkRecursive($storage, function (&$value) {
+
+            if (\is_object($value)) {
+
+                if ($value instanceof CData)
+                {
+                    $value = $this->document()->createCDATASection((string)$value);
+                    return;
+                }
+
+                if ($value instanceof Raw)
+                {
+                    $fragment = $this->document()->createDocumentFragment();
+                    $fragment->appendXML((string)$value);
+                    $value = $fragment;
+                    return;
+                }
+
+            }
+
+        });
+
+        return $storage;
+
+    }
+
     /**
      * @param string     $key
      * @param DOMElement $element
@@ -290,17 +353,12 @@ class XMLReader
     {
         if ($key === '@attributes')
         {
-            $this->addAttributes($element, $storage);
-        } else if ($key === '@value')
-        {
 
-            if (\is_object($storage) && $storage instanceof Raw)
-            {
-                $fragment = $element->ownerDocument->createDocumentFragment();
-                $fragment->appendXML((string)$storage);
-                $element->appendChild($fragment);
-                return;
-            }
+            $this->addAttributes($element, $storage);
+
+        }
+        else if ($key === '@value')
+        {
 
             if (\is_string($storage))
             {
@@ -309,22 +367,27 @@ class XMLReader
                 return;
             }
 
-            $dom = new \DOMDocument();
-            $dom->loadXML(
-                (new XMLReader())->asXML($storage)
-            );
-
+            $dom      = new \DOMDocument();
             $fragment = $element->ownerDocument->createDocumentFragment();
 
-            foreach ($dom->firstChild->childNodes as $value)
+            $dom->loadXML(
+                (new XMLReader())->asXML($storage, 'root', $this->namespaces)
+            );
+
+            /**
+             * @var $childNode \DOMText
+             */
+            foreach ($dom->firstChild->childNodes as $childNode)
             {
                 $fragment->appendXML(
-                    $value->ownerDocument->saveXML($value)
+                    $childNode->ownerDocument->saveXML($childNode)
                 );
             }
 
             $element->appendChild($fragment);
-        } else
+
+        }
+        else
         {
             $this->addNode($element, $key, $storage);
         }
@@ -360,7 +423,7 @@ class XMLReader
     protected function addNode(DOMElement $element, $key, $value)
     {
         $key   = \str_replace(' ', '-', $key);
-        $child = $this->document()->createElement($key);
+        $child = $this->element($key);
         $element->appendChild($child);
         $this->convert($child, $value);
     }
@@ -385,7 +448,7 @@ class XMLReader
         /**
          * @var $child DOMElement
          */
-        $child = $this->document()->createElement($element->nodeName);
+        $child = $this->element($element->nodeName);
 //        $child = $element->cloneNode();
         $element->parentNode->appendChild($child);
         $this->convert($child, $value);
@@ -406,7 +469,7 @@ class XMLReader
             return;
         }
 
-        $child = $this->document()->createElement($element->nodeName);
+        $child = $this->element($element->nodeName);
 //        $child = $element->cloneNode();
         $child->nodeValue = \htmlspecialchars($value);
         $element->parentNode->appendChild($child);
@@ -422,6 +485,11 @@ class XMLReader
     {
         foreach ($storage as $attrKey => $attrVal)
         {
+            if (strpos($attrKey, ':') !== false)
+            {
+                $this->namespaces[$attrKey] = $attrVal;
+            }
+
             $element->setAttribute($attrKey, $attrVal);
         }
     }
