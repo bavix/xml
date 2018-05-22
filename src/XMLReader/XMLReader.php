@@ -356,8 +356,7 @@ class XMLReader
 
             $this->addAttributes($element, $storage);
 
-        } else if ($key === '@value')
-        {
+        } else if ($key === '@value') {
 
             if (\is_string($storage))
             {
@@ -385,8 +384,7 @@ class XMLReader
 
             $element->appendChild($fragment);
 
-        } else
-        {
+        } else {
             $this->addNode($element, $key, $storage);
         }
     }
