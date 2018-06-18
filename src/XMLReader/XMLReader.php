@@ -136,8 +136,7 @@ class XMLReader
             if ($properties) {
 
                 $data = \is_array($properties) ?
-                    $properties :
-                    $this->_asArray($properties);
+                    $properties : $this->_asArray($properties);
 
                 if ($data !== null || $data === '') {
                     $output['@' . $property] = $data;
@@ -342,7 +341,7 @@ class XMLReader
      */
     protected function fragments(array $storage): array
     {
-        Arr::walkRecursive($storage, function (&$value) {
+        Arr::walkRecursive($storage, function(&$value) {
             if (\is_object($value) && $value instanceof Raw) {
                 $value = $value->fragment($this->document());
             }
