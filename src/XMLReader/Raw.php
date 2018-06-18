@@ -21,9 +21,20 @@ class Raw
     }
 
     /**
+     * @param \DOMDocument $document
+     * @return \DOMDocumentFragment
+     */
+    public function fragment(\DOMDocument $document): \DOMNode
+    {
+        $fragment = $document->createDocumentFragment();
+        $fragment->appendXML((string)$this);
+        return $fragment;
+    }
+
+    /**
      * @return string
      */
-    public function __toString()
+    public function __toString(): string
     {
         return $this->raw;
     }
