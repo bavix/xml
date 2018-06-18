@@ -16,11 +16,6 @@ class XMLReader
     /**
      * @var array
      */
-    protected $copyright = [];
-
-    /**
-     * @var array
-     */
     protected $namespaces = [];
 
     /**
@@ -28,15 +23,58 @@ class XMLReader
      */
     protected $document;
 
-    public function __construct($copyright = true)
+    /**
+     * @var Options
+     */
+    protected $options;
+
+    /**
+     * XMLReader constructor.
+     * @param Options $options
+     */
+    public function __construct(Options $options = null)
     {
-        if ($copyright)
-        {
-            $this->copyright = [
-                'created-with' => 'https://github.com/bavix/xml',
-                'created-at'   => \date('Y-m-d H:i:s')
-            ];
+        if ($options) {
+            $this->options = $options;
         }
+    }
+
+    /**
+     * @return Options
+     */
+    protected function options(): Options
+    {
+        if (!$this->options) {
+            $this->options = new Options();
+        }
+        return $this->options;
+    }
+
+    /**
+     * @param array|\Traversable $storage
+     * @param string $name
+     * @param array $attributes
+     * @return string
+     */
+    public static function toXml($storage, string $name = null, array $attributes = []): string
+    {
+        return (new static())
+            ->asXML($storage, $name, $attributes);
+    }
+
+    /**
+     * @return \DOMDocument
+     */
+    public function makeDocument(): \DOMDocument
+    {
+        $document = new \DOMDocument(
+            $this->options()->getVersion(),
+            $this->options()->getCharset()
+        );
+
+        $document->formatOutput = $this->options()->isFormatOutput();
+
+        return $document;
     }
 
     /**
@@ -46,8 +84,7 @@ class XMLReader
     {
         if (!$this->document)
         {
-            $this->document               = new \DOMDocument('1.0', 'utf-8');
-            $this->document->formatOutput = true;
+            $this->document = $this->makeDocument();
         }
 
         return $this->document;
@@ -55,23 +92,32 @@ class XMLReader
 
     /**
      * @param string $name
+     * @param mixed $value
+     * @return DOMElement
+     */
+    protected function createElement(string $name, $value = null): \DOMElement
+    {
+        return $this->document()->createElement($name, $value);
+    }
+
+    /**
+     * @param string $name
      *
      * @return \DOMElement
      */
-    protected function element($name): \DOMElement
+    protected function element(string $name): \DOMElement
     {
-        if (strpos($name, ':') !== false)
+        if (\strpos($name, ':') !== false)
         {
-
             $keys = explode(':', $name);
 
             return $this->document()->createElementNS(
-                $this->namespaces['xmlns:' . \current($keys)],
+                $this->namespaces[$this->options()->getNamespace() . ':' . \current($keys)],
                 $name
             );
         }
 
-        return $this->document()->createElement($name);
+        return $this->createElement($name);
     }
 
     /**
@@ -84,22 +130,19 @@ class XMLReader
     {
         $output = [];
 
-        if (method_exists($element, $property))
-        {
-
+        if (\method_exists($element, $property)) {
             $properties = $element->$property();
 
-            if ($properties)
-            {
-                $output['@' . $property] = is_array($properties) ?
-                    $properties : $this->_asArray($properties);
+            if ($properties) {
 
-                if (empty($output['@' . $property]))
-                {
-                    Arr::remove($output, '@' . $property);
+                $data = \is_array($properties) ?
+                    $properties :
+                    $this->_asArray($properties);
+
+                if ($data !== null || $data === '') {
+                    $output['@' . $property] = $data;
                 }
             }
-
         }
 
         return $output;
@@ -116,12 +159,9 @@ class XMLReader
     {
         $output = $this->_property($element, 'attributes');
 
-        if (!$element->count())
-        {
+        if (!$element->count()) {
             $output['@value'] = (string)$element;
-
-            if (!isset($output['@attributes']))
-            {
+            if (!isset($output['@attributes'])) {
                 $output = $output['@value'];
             }
         }
@@ -140,8 +180,7 @@ class XMLReader
     {
         $output = $this->_asData($element);
 
-        if (!$element->count())
-        {
+        if (!$element->count()) {
             return $output;
         }
 
@@ -165,15 +204,13 @@ class XMLReader
          */
         foreach ($element as $key => $item)
         {
-            if (!isset($output[$key]))
-            {
+            if (!isset($output[$key])) {
                 $first[$key]  = true;
                 $output[$key] = $this->_asArray($item);
                 continue;
             }
 
-            if (!empty($first[$key]))
-            {
+            if (!empty($first[$key])) {
                 $output[$key] = [$output[$key]];
             }
 
@@ -193,14 +230,13 @@ class XMLReader
      */
     protected function _simpleXml($mixed): \SimpleXMLElement
     {
-        if ($mixed instanceof \DOMNode)
-        {
+        if ($mixed instanceof \DOMNode) {
             return \simplexml_import_dom($mixed);
         }
 
         if (File::isFile($mixed))
         {
-            return \simplexml_load_file($mixed);
+            $mixed = \file_get_contents($mixed);
         }
 
         return \simplexml_load_string($mixed);
@@ -211,12 +247,10 @@ class XMLReader
      *
      * @return array|null
      */
-    public function asArray($mixed)
+    public function asArray($mixed): ?array
     {
         $data = $this->_simpleXml($mixed);
-
-        return $data ?
-            $this->_asArray($data) : null;
+        return $data ? $this->_asArray($data) : null;
     }
 
     /**
@@ -236,8 +270,7 @@ class XMLReader
      */
     protected function _convertStorage($storage): array
     {
-        if ($storage instanceof \Traversable)
-        {
+        if ($storage instanceof \Traversable) {
             return \iterator_to_array($storage);
         }
 
@@ -251,13 +284,12 @@ class XMLReader
      *
      * @return string
      */
-    public function asXML($storage, string $name = 'bavix', array $attributes = []): string
+    public function asXML($storage, string $name = null, array $attributes = []): string
     {
         $storage = $this->fragments($storage);
-        $element = $this->element($name);
+        $element = $this->element($name ?? $this->options()->getRootName());
 
         $this->addAttributes($element, $attributes);
-        $this->addAttributes($element, $this->copyright);
         $this->document()->appendChild($element);
         $this->convert($element, $this->_convertStorage($storage));
         $xml = $this->document()->saveXML();
@@ -275,36 +307,27 @@ class XMLReader
      *
      * @codeCoverageIgnore
      */
-    protected function convert(DOMElement $element, $storage)
+    protected function convert(DOMElement $element, $storage): void
     {
-        if (\is_object($storage))
-        {
-            $element->appendChild(
-                $element->ownerDocument->importNode($storage)
-            );
-
+        if (\is_object($storage)) {
+            $element->appendChild($element->ownerDocument->importNode($storage));
             return;
         }
 
-        if (!\is_array($storage))
-        {
-            $element->nodeValue = htmlspecialchars($storage);
-
+        if (!\is_array($storage)) {
+            $element->nodeValue = \htmlspecialchars($storage);
             return;
         }
 
-        if (empty($storage))
-        {
+        if (empty($storage)) {
             throw new Exceptions\Blank('Array is empty');
         }
 
         $isInt      = Arr::map(Arr::getKeys($storage), '\is_int');
         $sequential = !Arr::in($isInt, false);
 
-        foreach ($storage as $key => $data)
-        {
-            if ($sequential)
-            {
+        foreach ($storage as $key => $data) {
+            if ($sequential) {
                 $this->sequential($element, $data);
                 continue;
             }
@@ -313,33 +336,19 @@ class XMLReader
         }
     }
 
-    protected function fragments(array $storage)
+    /**
+     * @param array $storage
+     * @return array
+     */
+    protected function fragments(array $storage): array
     {
-
-        Arr::walkRecursive($storage, function(&$value) {
-
-            if (\is_object($value)) {
-
-                if ($value instanceof CData)
-                {
-                    $value = $this->document()->createCDATASection((string)$value);
-                    return;
-                }
-
-                if ($value instanceof Raw)
-                {
-                    $fragment = $this->document()->createDocumentFragment();
-                    $fragment->appendXML((string)$value);
-                    $value = $fragment;
-                    return;
-                }
-
+        Arr::walkRecursive($storage, function (&$value) {
+            if (\is_object($value) && $value instanceof Raw) {
+                $value = $value->fragment($this->document());
             }
-
         });
 
         return $storage;
-
     }
 
     /**
@@ -349,44 +358,36 @@ class XMLReader
      *
      * @codeCoverageIgnore
      */
-    protected function addNodeWithKey($key, DOMElement $element, $storage)
+    protected function addNodeWithKey($key, DOMElement $element, $storage): void
     {
-        if ($key === '@attributes')
-        {
-
+        if ($key === '@attributes') {
             $this->addAttributes($element, $storage);
+            return;
+        }
 
-        } else if ($key === '@value') {
+        if ($key === '@value') {
 
-            if (\is_string($storage))
-            {
+            if (\is_string($storage)) {
                 $element->nodeValue = $storage;
-
                 return;
             }
 
             $dom      = new \DOMDocument();
             $fragment = $element->ownerDocument->createDocumentFragment();
-
-            $dom->loadXML(
-                (new XMLReader())->asXML($storage, 'root', $this->namespaces)
-            );
+            $dom->loadXML(static::toXml($storage, 'root', $this->namespaces));
 
             /**
              * @var $childNode \DOMText
              */
-            foreach ($dom->firstChild->childNodes as $childNode)
-            {
-                $fragment->appendXML(
-                    $childNode->ownerDocument->saveXML($childNode)
-                );
+            foreach ($dom->firstChild->childNodes as $childNode) {
+                $fragment->appendXML($childNode->ownerDocument->saveXML($childNode));
             }
 
             $element->appendChild($fragment);
-
-        } else {
-            $this->addNode($element, $key, $storage);
+            return;
         }
+
+        $this->addNode($element, $key, $storage);
     }
 
     /**
@@ -395,12 +396,10 @@ class XMLReader
      *
      * @codeCoverageIgnore
      */
-    protected function sequential(DOMElement $element, $storage)
+    protected function sequential(DOMElement $element, $storage): void
     {
-        if (\is_array($storage))
-        {
+        if (\is_array($storage)) {
             $this->addCollectionNode($element, $storage);
-
             return;
         }
 
@@ -416,7 +415,7 @@ class XMLReader
      *
      * @codeCoverageIgnore
      */
-    protected function addNode(DOMElement $element, $key, $value)
+    protected function addNode(DOMElement $element, $key, $value): void
     {
         $key   = \str_replace(' ', '-', $key);
         $child = $this->element($key);
@@ -432,12 +431,10 @@ class XMLReader
      *
      * @codeCoverageIgnore
      */
-    protected function addCollectionNode(DOMElement $element, $value)
+    protected function addCollectionNode(DOMElement $element, $value): void
     {
-        if ($element->childNodes->length === 0)
-        {
+        if ($element->childNodes->length === 0) {
             $this->convert($element, $value);
-
             return;
         }
 
@@ -445,7 +442,6 @@ class XMLReader
          * @var $child DOMElement
          */
         $child = $this->element($element->nodeName);
-//        $child = $element->cloneNode();
         $element->parentNode->appendChild($child);
         $this->convert($child, $value);
     }
@@ -456,17 +452,14 @@ class XMLReader
      *
      * @codeCoverageIgnore
      */
-    protected function addSequentialNode(DOMElement $element, $value)
+    protected function addSequentialNode(DOMElement $element, $value): void
     {
-        if (empty($element->nodeValue))
-        {
+        if (empty($element->nodeValue)) {
             $element->nodeValue = \htmlspecialchars($value);
-
             return;
         }
 
         $child = $this->element($element->nodeName);
-//        $child = $element->cloneNode();
         $child->nodeValue = \htmlspecialchars($value);
         $element->parentNode->appendChild($child);
     }
@@ -477,12 +470,10 @@ class XMLReader
      *
      * @codeCoverageIgnore
      */
-    protected function addAttributes(DOMElement $element, $storage)
+    protected function addAttributes(DOMElement $element, $storage): void
     {
-        foreach ($storage as $attrKey => $attrVal)
-        {
-            if (strpos($attrKey, ':') !== false)
-            {
+        foreach ($storage as $attrKey => $attrVal) {
+            if (strpos($attrKey, ':') !== false) {
                 $this->namespaces[$attrKey] = $attrVal;
             }
 

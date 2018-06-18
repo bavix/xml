@@ -2,7 +2,6 @@
 
 namespace Tests;
 
-use Bavix\Helpers\File;
 use Bavix\Tests\Unit;
 use Bavix\XMLReader\XMLReader;
 
